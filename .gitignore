@@ -3,3 +3,6 @@ node_modules/
 *.swp
 *.swo
 public/bundle.js
+outputfile.csv
+newrelic.js
+newrelic_agent.log

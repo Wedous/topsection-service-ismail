@@ -1,73 +1,78 @@
-const mysql = require('mysql');
+/* eslint-disable no-console */
+const connection = require('./index');
 
-const db_user = process.env.MYSQL_USER || 'root';
-const db_pass = process.env.MYSQL_PASSWORD || 'password';
-
-const connection = mysql.createConnection({
-  host: 'topsectiondb',
-  user: db_user,
-  password: db_pass,
-})
-
-connection.connect((err) => {
-  if (err) console.log(err)
+/* Comment this out when running cassandra */
+connection((err) => {
+  if (err) console.log(err);
 });
 
-connection.queryAsync = function(query, options){
-  const thisPool = this;
-  return new Promise((resolve, reject) => {
-    thisPool.query(query, options, (err, results, fields) => {
-      if(err) reject(err);
-      else resolve(results, fields)
-    });
-  }); 
-}
-connection.queryAsync('CREATE DATABASE IF NOT EXISTS udemy;')
-.then(() => connection.queryAsync('USE udemy;'))
-.then(() => (
-  connection.queryAsync(`
-  CREATE TABLE IF NOT EXISTS courses (
-      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-      title VARCHAR(255),
-      subtitle VARCHAR(255),
-      teacher_names VARCHAR(255),
-      avg_rating INT,
-      rating_count INT,
-      student_count INT,
-      last_updated DATE,
-      thumbnail_img TEXT,
-      price INT,
-      lang VARCHAR(255),
-      subtitle_lang VARCHAR(255),
-      course_len FLOAT,
-      isOnDiscount BOOLEAN,
-      current_price FLOAT,
-      discount FLOAT,
-      num_of_articles INT,
-      dwl_resources_count INT,
-      discountCountdown VARCHAR(12),
-      hasTag BOOLEAN,
-      tag VARCHAR(30)
-    );
-  `)
-))
-.catch((error) => console.log('error configuring db', error));
-// let queryAsync = function (query, options = null) {
-//   let connect = this;
-//   return new Promise((resolve, reject) => {
-//     connect.query(query, options, (err, results, fields) => {
-//       if(err) reject(err);
-//       else resolve(results, fields)
-//     });
-//   });
-// };
+connection.queryAsync = (query, options) => connection.raw(query, options);
 
-// connection.on('connection', (error, connection) => {
-  // if (error) console.log('error on.connection', error);
-  // connection.getConnection((err, con) => {
-  //   if (error) console.log('error getConneciton', err);
-  //   else {
-    // }
-// });
+connection.queryAsync("SELECT 1 FROM pg_database WHERE datname = 'udemy'")
+  .then((res) => {
+    if (res.rowCount === 1) throw res;
+    else { return connection.queryAsync('CREATE DATABASE udemy'); }
+  })
+  .then(() => connection.migrate.latest())
+  .then(() => {
+    connection.destroy();
+    console.log('Database created');
+  })
+  .catch(() => {
+    console.log("Database 'udemy' already exists");
+  });
 
-module.exports = { connection };
+module.exports = connection;
+
+/*
+Cassandra Database Setup Configuration
+*/
+
+/* Export code for courses schema used for Cassandra */
+// module.exports.makeTable = makeTable;
+
+/* Create table raw query */
+// const makeKeyspace = `
+//   CREATE KEYSPACE IF NOT EXISTS udemy
+//     WITH REPLICATION = {
+//       'class': 'SimpleStrategy',
+//       'replication_factor': 1
+//     }
+// `;
+
+/* Courses schema */
+// const makeTable = `
+//   CREATE TABLE udemy.courses(
+//     id int PRIMARY KEY,
+//     title varchar,
+//     subtitle varchar,
+//     teacher_names varchar,
+//     avg_rating int,
+//     rating_count int,
+//     student_count int,
+//     last_updated timestamp,
+//     price int,
+//     lang varchar,
+//     subtitle_lang varchar,
+//     course_len float,
+//     isOnDiscount boolean,
+//     current_price float,
+//     discount float,
+//     num_of_articles int,
+//     dwl_resources_count int,
+//     discountCountdown varchar,
+//     hasTag boolean,
+//     tag varchar,
+//     thumbnail_img text
+//   )
+// `;
+
+/* queryAsync specific to Cassandra note: .execute instead of .raw for Postgres */
+// connection.queryAsync = (query, options) => connection.execute(query, options);
+
+/* Cassandra Promise chain for connecting to database and creating table */
+// connection.queryAsync(makeKeyspace)
+//   .then(() => connection.queryAsync(makeTable))
+//   .then(() => connection.shutdown())
+//   .then(() => console.log('Database created'))
+//   .catch(err => console.log(err));

@@ -1,8 +1,11 @@
-const express = require('express'),
-  bodyParser = require('body-parser'),
-  path = require('path'),
-  cors = require('cors'),
-  { Course } = require('../db/Models.js');
+/* eslint-disable no-console */
+require('newrelic');
+
+const express = require('express');
+const bodyParser = require('body-parser');
+const path = require('path');
+const cors = require('cors');
+const { Course } = require('../db/models/Models');
 
 const app = express();
 
@@ -15,9 +18,8 @@ app.use(cors());
 
 app.get('/course/:courseId', (req, res) => {
   Course.findCourseById(req.params.courseId)
-  .then((course) => {
-    res.send(course);
-  })
+    .then((course) => { res.send(course).end(); })
+    .catch(err => console.log(err));
 });
 
-app.listen(port, () => console.log('listening on port ' + port));
+app.listen(port, () => console.log(`listening on port: ${port}`));
